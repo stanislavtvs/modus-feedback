@@ -5,7 +5,7 @@ from .access import role
 
 def navigation(request):
     route = request.resolver_match.url_name if request.resolver_match else ''
-    titles = {'radar':'Радар проблем','followups':'Контроль обращений','improvements':'Витрина улучшений','publication':'История улучшения','dashboard': 'Обзор', 'tickets': 'Обращения', 'create': 'Новое обращение',
+    titles = {'pulse':'Пульс подразделений','initiative':'Паспорт системной проблемы','demo':'Демонстрационный маршрут','radar':'Радар проблем','followups':'Контроль обращений','improvements':'Витрина улучшений','publication':'История улучшения','dashboard': 'Обзор', 'tickets': 'Обращения', 'create': 'Новое обращение',
               'detail': 'Карточка обращения', 'analytics': 'Аналитика',
               'notifications': 'Уведомления', 'login': 'Вход', 'settings': 'Настройки и маршрутизация', 'category_edit': 'Настройки и маршрутизация'}
     nav = 'settings' if route == 'category_edit' else route
@@ -14,7 +14,7 @@ def navigation(request):
             nav = 'mine'
         elif request.GET.get('assigned'):
             nav = 'assigned'
-    context = {'page_title': titles.get(route, 'Модус'), 'active_nav': nav, 'ai_enabled': settings.AI_ENABLED}
+    context = {'page_title': titles.get(route, 'Модус'), 'active_nav': nav, 'ai_enabled': settings.AI_ENABLED,'demo_mode':settings.DEMO_MODE}
     if request.user.is_authenticated:
         user_role = role(request.user)
         context.update(unread_count=Notification.objects.filter(recipient=request.user, read=False).count(),

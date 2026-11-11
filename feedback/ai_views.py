@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 from .access import visible,can_process
 from .models import Category
+from .privacy import reviewed_packet,json_body
 from .ai import generate,AIUnavailable,AIBusy,AIInvalidResponse
 
 def response(user,mode,source,categories):
@@ -39,7 +40,9 @@ def draft(request):
     except (ValueError,TypeError,UnicodeDecodeError):
         return JsonResponse({'error':'Проверьте текст: заголовок до 180, описание до 8000, решение до 4000 символов.'},status=400)
     categories=list(Category.objects.order_by('name').values('id','name')[:100])
-    return response(request.user,'draft',source,categories)
+    packet,pending=reviewed_packet(request,'draft',source,categories,body)
+    if pending: return pending
+    return response(request.user,'draft',packet['source'],packet['categories'])
 
 @login_required
 @require_POST
@@ -50,7 +53,11 @@ def analyze(request,pk):
             'status':ticket.get_status_display(),'resolution':ticket.resolution[:2000],
             'comments':list(ticket.comments.order_by('-created_at').values_list('text',flat=True)[:5])}
     source['comments']=[text[:1000] for text in source['comments']]
-    result=response(request.user,'analyze',source,[])
+    try: body=json_body(request)
+    except (ValueError,TypeError,UnicodeDecodeError): return JsonResponse({'error':'Некорректный запрос.'},status=400)
+    packet,pending=reviewed_packet(request,'analyze',source,[],body)
+    if pending: return pending
+    result=response(request.user,'analyze',packet['source'],packet['categories'])
     if result.status_code==200 and not can_process(request.user,ticket):
         body=json.loads(result.content);body['result'].pop('reply_draft',None)
         return JsonResponse(body)

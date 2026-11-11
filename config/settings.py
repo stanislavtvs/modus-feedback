@@ -44,3 +44,8 @@ AI_ENABLED=os.getenv('AI_ENABLED','1')=='1'
 OLLAMA_URL=os.getenv('OLLAMA_URL','http://10.0.0.7:11434').rstrip('/')
 OLLAMA_MODEL=os.getenv('OLLAMA_MODEL','gemma-4-26B-A4B-it-UD-Q8_K_XL:latest')
 OLLAMA_TIMEOUT=min(max(int(os.getenv('OLLAMA_TIMEOUT','75')),5),90)
+
+# Enabled only in the isolated synthetic-data installation.
+DEMO_MODE=os.getenv('DEMO_MODE','0')=='1'
+SESSION_COOKIE_NAME='modus_demo_session' if DEMO_MODE else 'sessionid'
+CSRF_COOKIE_NAME='modus_demo_csrf' if DEMO_MODE else 'csrftoken'

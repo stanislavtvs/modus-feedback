@@ -38,20 +38,9 @@
             button.setAttribute('aria-busy', 'true');
             result.hidden = true;
             result.replaceChildren();
-            announce('Gemma готовит предложение. Это может занять до полутора минут.');
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 95000);
+            announce('Сначала проверьте пакет данных. После подтверждения Gemma подготовит предложение.');
             try {
-                const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
-                const response = await fetch(panel.dataset.aiUrl, {
-                    method: 'POST', credentials: 'same-origin', signal: controller.signal,
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
-                    body: JSON.stringify(snapshot ? {title:snapshot.title,description:snapshot.description,suggestion:snapshot.suggestion} : {})
-                });
-                if (response.redirected || response.status === 403) throw new Error('Сессия истекла. Обновите страницу и войдите снова.');
-                let payload;
-                try { payload = await response.json(); } catch { throw new Error('Сервис не смог вернуть ответ. Попробуйте позже.'); }
-                if (!response.ok) throw new Error(payload.error || 'ИИ сейчас недоступен. Попробуйте позже.');
+                const payload = await window.reviewedAI(panel.dataset.aiUrl,snapshot ? {title:snapshot.title,description:snapshot.description,suggestion:snapshot.suggestion} : {},()=>announce('Gemma готовит предложение. Это может занять до полутора минут.'));
                 const data = payload.result;
                 if (isDraft) {
                     paragraph('Заголовок', data.title);
@@ -101,11 +90,11 @@
                 announce('Предложение готово. Проверьте точность формулировок.');
                 result.focus();
             } catch (error) {
-                announce(error.name === 'AbortError' ? 'Ожидание ответа истекло. Текст не изменён. Повторите попытку позже.' : error.message, true);
+                announce(error.name === 'AbortError' ? 'Ожидание ответа истекло. Текст не изменён. Повторите попытку позже.' : error.message, error.name !== 'ReviewCancelled');
             } finally {
-                clearTimeout(timeout);
                 button.disabled = false;
                 button.removeAttribute('aria-busy');
+                if(result.hidden) button.focus();
             }
         });
     }

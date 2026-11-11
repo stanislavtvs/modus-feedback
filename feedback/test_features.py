@@ -7,6 +7,7 @@ from django.utils import timezone
 from .models import Department,Profile,Category,Ticket,OutcomeReview,ImprovementPost,ProblemTheme,FollowUpPolicy,FollowUpAlert,Notification,Comment
 from .followups import check_followups
 from . import ai
+from .test_helpers import approved_post
 
 class FeatureTests(TestCase):
     @classmethod
@@ -97,10 +98,10 @@ class FeatureTests(TestCase):
         result={'groups':[{'title':'Согласование','summary':'Один процесс','ticket_ids':[self.ticket.pk,second.pk]}]}
         self.client.force_login(self.manager)
         with patch('feedback.feature_views.ai.generate',return_value=result) as generate:
-            response=self.client.post(reverse('radar_generate'));self.assertEqual(response.status_code,200)
+            response=approved_post(self.client,reverse('radar_generate'));self.assertEqual(response.status_code,200)
             source=generate.call_args.args[2];self.assertNotIn(foreign.pk,[item['id'] for item in source])
             self.assertNotIn('author',source[0]);self.assertNotIn('comments',source[0])
-            self.client.post(reverse('radar_generate'))
+            approved_post(self.client,reverse('radar_generate'))
         self.assertEqual(ProblemTheme.objects.count(),1);theme=ProblemTheme.objects.get();self.assertEqual(theme.status,'proposed')
         response=self.client.post(reverse('radar'),{'theme_id':theme.pk,'action':'confirm',f'theme-{theme.pk}-title':'Проверенная тема',f'theme-{theme.pk}-summary':'Связь проверена'})
         self.assertEqual(response.status_code,302);theme.refresh_from_db();self.assertEqual(theme.status,'confirmed')
@@ -109,14 +110,14 @@ class FeatureTests(TestCase):
         cases=[{'groups':[{'title':'Недоступно','summary':'x','ticket_ids':[self.ticket.pk,foreign.pk]}]},
                {'groups':[{'title':'a','summary':'x','ticket_ids':[self.ticket.pk,second.pk]},{'title':'b','summary':'x','ticket_ids':[self.ticket.pk,second.pk]}]}]
         for result in cases:
-            with patch('feedback.feature_views.ai.generate',return_value=result): self.assertEqual(self.client.post(reverse('radar_generate')).status_code,502)
+            with patch('feedback.feature_views.ai.generate',return_value=result): self.assertEqual(approved_post(self.client,reverse('radar_generate')).status_code,502)
             self.assertFalse(ProblemTheme.objects.exists())
     def test_radar_group_hidden_after_permission_change(self):
         second=self.second();theme=ProblemTheme.objects.create(title='Скрытая тема',summary='Чужие данные',fingerprint='x',created_by=self.manager);theme.tickets.set([self.ticket,second])
         second.department=self.b;second.assignee=self.foreign_manager;second.save()
         self.client.force_login(self.manager);self.assertNotContains(self.client.get(reverse('radar')),'Скрытая тема')
         self.assertEqual(self.client.post(reverse('radar'),{'theme_id':theme.pk,'action':'dismiss'}).status_code,403)
-        self.client.force_login(self.employee);self.assertEqual(self.client.post(reverse('radar_generate')).status_code,403)
+        self.client.force_login(self.employee);self.assertEqual(approved_post(self.client,reverse('radar_generate')).status_code,403)
     def test_radar_validator_rejects_boolean_and_duplicate_ids(self):
         schema=ai.schema_for('radar',[{'id':self.ticket.pk},{'id':999}])
         for ids in [[True,999],[self.ticket.pk,self.ticket.pk]]:

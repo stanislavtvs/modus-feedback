@@ -143,3 +143,20 @@ class FollowUpAlert(models.Model):
     resolved_at=models.DateTimeField(null=True,blank=True)
     class Meta:
         constraints=[models.UniqueConstraint(fields=['ticket'],condition=Q(resolved_at__isnull=True),name='one_active_followup')]
+
+class Initiative(models.Model):
+    theme=models.OneToOneField(ProblemTheme,on_delete=models.PROTECT,related_name='initiative')
+    goal=models.CharField('Цель изменения',max_length=180)
+    owner=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT,related_name='initiatives')
+    plan=models.TextField('План действий')
+    due_date=models.DateField('Срок общей инициативы')
+    status=models.CharField('Состояние',max_length=12,default='planned',choices=[('planned','Запланировано'),('work','В работе'),('done','Завершено')])
+    result=models.TextField('Результат и способ проверки',blank=True)
+    updated_at=models.DateTimeField(auto_now=True)
+
+class InitiativeEvent(models.Model):
+    initiative=models.ForeignKey(Initiative,on_delete=models.CASCADE,related_name='events')
+    actor=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    text=models.TextField()
+    created_at=models.DateTimeField(default=timezone.now)
+    class Meta: ordering=['created_at','pk']

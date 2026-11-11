@@ -1,6 +1,6 @@
 from django import forms
 from django.core.validators import MaxLengthValidator,MinValueValidator,MaxValueValidator
-from .models import ImprovementPost, FollowUpPolicy, ProblemTheme
+from .models import ImprovementPost, FollowUpPolicy, ProblemTheme, Initiative
 
 class OutcomeForm(forms.Form):
     revision=forms.IntegerField(min_value=1,widget=forms.HiddenInput)
@@ -43,3 +43,21 @@ class PolicyForm(forms.ModelForm):
             if name!='enabled':
                 self.fields[name].validators.extend([MinValueValidator(1),MaxValueValidator(8760)])
                 self.fields[name].widget.attrs.update(min=1,max=8760)
+
+class InitiativeForm(forms.ModelForm):
+    class Meta:
+        model=Initiative
+        fields=['goal','owner','plan','due_date','status','result']
+        widgets={'plan':forms.Textarea(attrs={'rows':5}),'result':forms.Textarea(attrs={'rows':3}),'due_date':forms.DateInput(attrs={'type':'date'},format='%Y-%m-%d')}
+    def __init__(self,*args,allowed_owners,**kwargs):
+        super().__init__(*args,**kwargs)
+        from .forms import ResponsibleChoiceField
+        self.fields['owner']=ResponsibleChoiceField(label='Ответственный за инициативу',queryset=allowed_owners)
+        for key in ['plan','result']: self.fields[key].validators.append(MaxLengthValidator(5000));self.fields[key].widget.attrs['maxlength']=5000
+    def clean_plan(self): return self.cleaned_data['plan'].replace('\r\n','\n')
+    def clean_result(self): return self.cleaned_data['result'].replace('\r\n','\n')
+    def clean(self):
+        data=super().clean()
+        if data.get('status')=='done' and not data.get('result'):
+            self.add_error('result','Укажите результат и способ его проверки. Завершение инициативы не подтверждает решения отдельных обращений автоматически.')
+        return data

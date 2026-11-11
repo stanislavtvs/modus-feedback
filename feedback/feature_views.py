@@ -13,6 +13,7 @@ from .feature_forms import OutcomeForm,PublicationForm,ThemeForm,PolicyForm
 from .services import notify,route
 from . import ai
 from .followups import check_followups
+from .privacy import reviewed_packet,json_body
 from datetime import timedelta
 
 RESULT_STATUSES=['implemented','closed']
@@ -122,7 +123,12 @@ def radar_generate(request):
     if len(tickets)<2: return JsonResponse({'error':'Нужно хотя бы два доступных обращения.'},status=400)
     source=[{'id':t.pk,'title':t.title,'description':t.description[:450],'category':t.category.name} for t in tickets]
     try:
-        result=ai.generate(request.user,'radar',source,[{'id':t.pk} for t in tickets])
+        body=json_body(request)
+    except (ValueError,TypeError,UnicodeDecodeError): return JsonResponse({'error':'Некорректный запрос.'},status=400)
+    packet,pending=reviewed_packet(request,'radar',source,[{'id':t.pk} for t in tickets],body)
+    if pending: return pending
+    try:
+        result=ai.generate(request.user,'radar',packet['source'],packet['categories'])
         # Defense in depth even if the provider or validator implementation changes.
         result=ai.validate(result,ai.schema_for('radar',[{'id':t.pk} for t in tickets]))
         used=set();created=0
