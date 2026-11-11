@@ -1,3 +1,4 @@
+from django.conf import settings
 from .models import Notification
 from .access import role
 
@@ -13,7 +14,7 @@ def navigation(request):
             nav = 'mine'
         elif request.GET.get('assigned'):
             nav = 'assigned'
-    context = {'page_title': titles.get(route, 'Модус'), 'active_nav': nav}
+    context = {'page_title': titles.get(route, 'Модус'), 'active_nav': nav, 'ai_enabled': settings.AI_ENABLED}
     if request.user.is_authenticated:
         user_role = role(request.user)
         context.update(unread_count=Notification.objects.filter(recipient=request.user, read=False).count(),
