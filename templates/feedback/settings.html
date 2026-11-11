@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">Управление системой</p><h1>Настройки и маршрутизация</h1><p class="muted">Определите, кто рассматривает обращения и в какие сроки.</p></div></div>
+<section class="panel padded routing-explanation" aria-labelledby="routing-heading">
+    <h2 id="routing-heading">Как назначается ответственный</h2>
+    <ol class="routing-steps"><li><span class="route-number">1</span><div><strong>Ответственный категории</strong><p>Если выбран активный руководитель или администратор.</p></div></li><li><span class="route-number">2</span><div><strong>Руководитель подразделения</strong><p>Подразделение определяется по автору обращения.</p></div></li><li><span class="route-number">3</span><div><strong>Очередь администраторов</strong><p>Если назначить ответственного автоматически не удалось.</p></div></li></ol>
+</section>
+<div class="content-grid settings-grid">
+    <section class="panel"><div class="section-heading"><div><h2>Категории и правила</h2><p class="hint">Всего категорий: {{ category_count }}</p></div></div>
+    <ul class="routing-list">{% for category in categories %}<li>
+        <div class="routing-category"><h3>{{ category.name }}</h3><span class="hint">Обращений: {{ category.ticket_count }}</span></div>
+        <dl><div><dt>Ответственный</dt><dd>{% if category.responsible %}{{ category.responsible.get_full_name|default:category.responsible.username }}{% if not category.responsible.is_active %}<span class="overdue">Неактивен — используется резервный маршрут</span>{% endif %}{% else %}По подразделению автора{% endif %}</dd></div><div><dt>Срок рассмотрения</dt><dd>{{ category.sla_days }} календ. дн.</dd></div></dl>
+        <a class="routing-edit" href="{% url 'category_edit' category.pk %}#category-form" aria-label="Изменить категорию «{{ category.name }}»">Изменить{% include 'includes/icon.html' with name='settings' %}</a>
+    </li>{% empty %}<li class="empty">Добавьте первую категорию. Она появится в форме обращения.</li>{% endfor %}</ul></section>
+    <aside>
+        <section class="panel padded" id="category-form" tabindex="-1"><h2>{% if editing %}Изменить категорию{% else %}Новая категория{% endif %}</h2>{% if editing %}<p class="hint">{{ editing.name }}</p>{% endif %}
+            <form method="post">{% csrf_token %}{% include 'feedback/form_fields.html' %}<div class="actions"><button class="primary">{% if editing %}Сохранить изменения{% else %}Добавить категорию{% endif %}</button>{% if editing %}<a href="{% url 'settings' %}">Отмена</a>{% endif %}</div></form>
+            <p class="hint settings-note">Новые правила действуют для будущих обращений. Ответственные и сроки существующих обращений сохраняются.</p>
+        </section>
+        <section class="panel padded"><h2>Резервная маршрутизация</h2><p class="hint">Если в подразделении несколько активных руководителей, выбирается первый по порядку регистрации.</p><ul class="department-routing">{% for department in departments %}<li><strong>{{ department.name }}</strong><span class="hint">{% if department.manager_count %}Активных руководителей: {{ department.manager_count }}{% else %}Нет руководителя — очередь администраторов{% endif %}</span></li>{% endfor %}</ul></section>
+    </aside>
+</div>
+{% endblock %}

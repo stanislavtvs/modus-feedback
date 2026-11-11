@@ -1,0 +1,10 @@
+<details class="access-menu">
+    <summary aria-label="Настройки доступности" title="Настройки доступности">{% include 'includes/icon.html' with name='access' %}</summary>
+    <section class="access-panel" aria-labelledby="access-title">
+        <div class="access-heading"><h2 id="access-title">Удобный вид</h2><button type="button" class="access-close" aria-label="Закрыть настройки доступности">×</button></div>
+        <p class="hint">Настройте интерфейс под себя. Выбор сохранится в этом браузере.</p>
+        <button type="button" id="contrast" aria-pressed="false"><span>Высокий контраст</span><span class="toggle-state" aria-hidden="true"></span></button>
+        <button type="button" id="font-size" aria-pressed="false"><span>Крупный текст</span><span class="toggle-state" aria-hidden="true"></span></button>
+        <button type="button" id="reset-accessibility" class="reset-access">Сбросить настройки</button>
+    </section>
+</details>

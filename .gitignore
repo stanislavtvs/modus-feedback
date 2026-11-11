@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.venv/
+*.sqlite3
+private_uploads/
+staticfiles/
+.DS_Store
+*.sql
+*.dump

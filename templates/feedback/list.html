@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading">
+    <div><p class="eyebrow">Единый реестр</p><h1>{% if request.GET.mine %}Мои обращения{% elif request.GET.assigned %}Назначены мне{% else %}Обращения{% endif %}</h1><p class="muted">Найдите тему, проверьте статус, продолжите обсуждение.</p></div>
+    <a class="button primary" href="{% url 'create' %}">{% include 'includes/icon.html' with name='plus' %}Новое обращение</a>
+</div>
+<section class="panel filters" aria-label="Поиск и фильтры">
+<form method="get">
+    <div class="filter-grid basic-filters">
+        <div class="field"><label for="q">Поиск по тексту</label><input id="q" name="q" value="{{ request.GET.q }}" placeholder="Тема, описание или решение"></div>
+        <div class="field"><label for="status">Статус</label><select id="status" name="status"><option value="">Все статусы</option>{% for value,label in statuses %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="category">Категория</label><select name="category" id="category"><option value="">Все категории</option>{% for item in categories %}<option value="{{ item.pk }}" {% if request.GET.category == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+    </div>
+    <details class="advanced-filters" {% if request.GET.department or request.GET.kind or request.GET.priority or request.GET.from or request.GET.to %}open{% endif %}>
+        <summary>{% include 'includes/icon.html' with name='settings' %}Дополнительные фильтры</summary>
+        <div class="filter-grid">
+            <div class="field"><label for="department">Подразделение</label><select id="department" name="department"><option value="">Все подразделения</option>{% for item in departments %}<option value="{{ item.pk }}" {% if request.GET.department == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+            <div class="field"><label for="kind">Тип обращения</label><select id="kind" name="kind"><option value="">Все типы</option>{% for value,label in kinds %}<option value="{{ value }}" {% if request.GET.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="field"><label for="priority">Приоритет</label><select id="priority" name="priority"><option value="">Все приоритеты</option>{% for value,label in priorities %}<option value="{{ value }}" {% if request.GET.priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="field"><label for="from">Создано с</label><input type="date" id="from" name="from" value="{{ request.GET.from }}"></div>
+            <div class="field"><label for="to">Создано по</label><input type="date" id="to" name="to" value="{{ request.GET.to }}"></div>
+        </div>
+    </details>
+    <div class="filter-actions">
+        <label><input type="checkbox" name="overdue" value="1" {% if request.GET.overdue %}checked{% endif %}>Только просроченные</label>
+        <label><input type="checkbox" name="mine" value="1" {% if request.GET.mine %}checked{% endif %}>Мои</label>
+        <label><input type="checkbox" name="assigned" value="1" {% if request.GET.assigned %}checked{% endif %}>Назначены мне</label>
+        <button class="primary">Применить</button><a href="{% url 'tickets' %}">Сбросить</a>
+    </div>
+</form>
+</section>
+<section class="panel"><div class="section-heading"><h2>Найдено: {{ page.paginator.count }}</h2><span class="hint">Только доступные вам обращения</span></div>{% include 'feedback/table.html' with tickets=page %}
+<nav class="pagination" aria-label="Страницы обращений">{% if page.has_previous %}<a href="?{{ querystring }}&page={{ page.previous_page_number }}">← Назад</a>{% endif %}<span>Страница {{ page.number }} из {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a href="?{{ querystring }}&page={{ page.next_page_number }}">Далее →</a>{% endif %}</nav></section>
+{% endblock %}

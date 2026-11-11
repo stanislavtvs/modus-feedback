@@ -1,0 +1,9 @@
+<section class="panel padded ai-assistant" data-ai-assistant data-ai-mode="{{ mode }}" data-ai-url="{% if mode == 'draft' %}{% url 'ai_draft' %}{% else %}{% url 'ai_analyze' ticket.pk %}{% endif %}">
+    <div class="ai-heading"><span class="ai-mark" aria-hidden="true">ИИ</span><h2>Помощник Gemma</h2></div>
+    <p>{% if mode == 'draft' %}Опишите ситуацию своими словами. Помощник предложит понятный заголовок, формулировку и категорию.{% else %}Краткая суть, объяснение простыми словами и возможные следующие шаги.{% endif %}</p>
+    <button type="button" class="ai-run">{% if mode == 'draft' %}Помочь сформулировать{% else %}Разобрать обращение{% endif %}</button>
+    <p class="ai-status" role="status" aria-live="polite"></p>
+    <div class="ai-result" hidden tabindex="-1" aria-label="Предложение ИИ"></div>
+    <p class="ai-footnote">По нажатию текст отправляется на ваш сервер ИИ. Вложения и данные профиля не передаются. Ответ нужно проверить; изменения применяете вы.</p>
+    <noscript><p>Для помощника нужен JavaScript. Создание и обработка обращения работают без него.</p></noscript>
+</section>

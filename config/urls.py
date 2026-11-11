@@ -1,0 +1,4 @@
+from django.contrib import admin
+from django.urls import path,include
+from feedback import views,ai_views,settings_views
+urlpatterns=[path('settings/',settings_views.routing_settings,name='settings'),path('settings/categories/<int:pk>/',settings_views.routing_settings,name='category_edit'),path('ai/draft/',ai_views.draft,name='ai_draft'),path('requests/<int:pk>/ai/',ai_views.analyze,name='ai_analyze'),path('admin/',admin.site.urls),path('accounts/',include('django.contrib.auth.urls')),path('',views.dashboard,name='dashboard'),path('requests/',views.ticket_list,name='tickets'),path('requests/new/',views.create,name='create'),path('requests/<int:pk>/',views.detail,name='detail'),path('files/<int:pk>/',views.download,name='download'),path('notifications/',views.notifications,name='notifications'),path('analytics/',views.analytics,name='analytics'),path('health/',views.health,name='health')]
