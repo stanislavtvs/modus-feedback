@@ -53,11 +53,41 @@ class InitiativeForm(forms.ModelForm):
         super().__init__(*args,**kwargs)
         from .forms import ResponsibleChoiceField
         self.fields['owner']=ResponsibleChoiceField(label='Ответственный за инициативу',queryset=allowed_owners)
+        self.fields['plan'].required=False
         for key in ['plan','result']: self.fields[key].validators.append(MaxLengthValidator(5000));self.fields[key].widget.attrs['maxlength']=5000
     def clean_plan(self): return self.cleaned_data['plan'].replace('\r\n','\n')
     def clean_result(self): return self.cleaned_data['result'].replace('\r\n','\n')
     def clean(self):
         data=super().clean()
+        if self.instance.pk:
+            if data.get('status')=='done' and self.instance.steps.filter(active=True,done=False).exists(): self.add_error('status','Сначала выполните или уберите из плана незавершённые шаги.')
+            if data.get('due_date') and self.instance.steps.filter(active=True,due_date__gt=data['due_date']).exists(): self.add_error('due_date','Есть шаги с более поздним сроком. Сначала измените их сроки.')
         if data.get('status')=='done' and not data.get('result'):
             self.add_error('result','Укажите результат и способ его проверки. Завершение инициативы не подтверждает решения отдельных обращений автоматически.')
         return data
+
+class StepForm(forms.ModelForm):
+    import uuid
+    revision=forms.IntegerField(min_value=0,widget=forms.HiddenInput,initial=0)
+    creation_token=forms.UUIDField(widget=forms.HiddenInput,initial=uuid.uuid4)
+    class Meta:
+        from .models import InitiativeStep
+        model=InitiativeStep
+        fields=['title','owner','due_date','active']
+        widgets={'due_date':forms.DateInput(attrs={'type':'date'},format='%Y-%m-%d')}
+    def __init__(self,*args,allowed_owners,initiative,**kwargs):
+        super().__init__(*args,**kwargs)
+        from .forms import ResponsibleChoiceField
+        self.initiative=initiative
+        self.fields['owner']=ResponsibleChoiceField(label='Ответственный за шаг',queryset=allowed_owners)
+        self.fields['due_date'].widget.attrs['max']=initiative.due_date.isoformat()
+        if self.instance.pk:
+            self.fields.pop('creation_token');self.fields['revision'].initial=self.instance.revision
+    def clean_due_date(self):
+        value=self.cleaned_data['due_date']
+        if value>self.initiative.due_date: raise forms.ValidationError('Срок шага не может быть позже срока инициативы.')
+        return value
+
+class StepStateForm(forms.Form):
+    revision=forms.IntegerField(min_value=0,widget=forms.HiddenInput)
+    done=forms.BooleanField(required=False,label='Выполнено')

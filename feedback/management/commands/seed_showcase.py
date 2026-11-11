@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand,CommandError
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
-from feedback.models import Ticket,Category,ProblemTheme,Initiative,InitiativeEvent,Event,OutcomeReview,ImprovementPost
+from feedback.models import Ticket,Category,ProblemTheme,Initiative,InitiativeEvent,InitiativeStep,Event,OutcomeReview,ImprovementPost
 
 class Command(BaseCommand):
     help='Дополнить только DEMO_MODE учебным маршрутом; существующие записи не перезаписываются.'
@@ -27,7 +27,10 @@ class Command(BaseCommand):
         theme,added=ProblemTheme.objects.get_or_create(fingerprint='demo-system-problem',defaults={'title':'Демо: единый процесс передачи заявок','summary':'Учебная тема подготовлена сценарием демонстрации вручную; это не результат живой генерации ИИ. Два обращения относятся к единому шаблону и правилам передачи.','status':'confirmed','created_by':admin,'confirmed_by':manager})
         if added:theme.tickets.set(items[:2])
         initiative,added=Initiative.objects.get_or_create(theme=theme,defaults={'goal':'Демо: сделать передачу заявок понятной','owner':manager,'plan':'1. Проверить недостающие поля на учебных примерах.\n2. Согласовать общий шаблон.\n3. Подготовить памятку.\n4. Получить оценку авторов обращений.','due_date':timezone.localdate()+timedelta(days=14),'status':'work'})
-        if added:InitiativeEvent.objects.create(initiative=initiative,actor=admin,text='Учебная инициатива подготовлена сценарием демо.')
+        if added:
+            InitiativeEvent.objects.create(initiative=initiative,actor=admin,text='Учебная инициатива подготовлена сценарием демо.')
+            for line in initiative.plan.splitlines():
+                InitiativeStep.objects.create(initiative=initiative,title=line[:180],owner=initiative.owner,due_date=initiative.due_date)
         ticket=items[2]
         # Re-running never confirms a solution edited during a demonstration.
         if ticket.resolution_revision==1 and ticket.status=='implemented' and ticket.resolution=='Учебный результат: подготовлена памятка с примерами.':

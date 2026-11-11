@@ -148,7 +148,7 @@ class Initiative(models.Model):
     theme=models.OneToOneField(ProblemTheme,on_delete=models.PROTECT,related_name='initiative')
     goal=models.CharField('Цель изменения',max_length=180)
     owner=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT,related_name='initiatives')
-    plan=models.TextField('План действий')
+    plan=models.TextField('Контекст и общий подход',blank=True)
     due_date=models.DateField('Срок общей инициативы')
     status=models.CharField('Состояние',max_length=12,default='planned',choices=[('planned','Запланировано'),('work','В работе'),('done','Завершено')])
     result=models.TextField('Результат и способ проверки',blank=True)
@@ -160,3 +160,18 @@ class InitiativeEvent(models.Model):
     text=models.TextField()
     created_at=models.DateTimeField(default=timezone.now)
     class Meta: ordering=['created_at','pk']
+
+class InitiativeStep(models.Model):
+    initiative=models.ForeignKey(Initiative,on_delete=models.CASCADE,related_name='steps')
+    title=models.CharField('Действие',max_length=180)
+    owner=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT,related_name='initiative_steps')
+    due_date=models.DateField('Срок шага')
+    done=models.BooleanField('Выполнено',default=False)
+    active=models.BooleanField('Включить шаг в план',default=True)
+    revision=models.PositiveIntegerField(default=0)
+    creation_token=models.UUIDField(default=uuid.uuid4,unique=True,editable=False)
+    completed_at=models.DateTimeField(null=True,blank=True)
+    completed_by=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.SET_NULL,null=True,blank=True,related_name='+')
+    class Meta: ordering=['pk']
+    @property
+    def overdue(self): return self.active and not self.done and self.due_date<timezone.localdate()

@@ -8,7 +8,7 @@ from django.conf import settings
 from django.utils import timezone
 from feedback.models import Department,Profile,Category,Ticket,Event
 class Command(BaseCommand):
-    help='Load synthetic hackathon data; existing records are preserved.'
+    help='Load synthetic demonstration data; existing records are preserved.'
     @transaction.atomic
     def handle(self,*args,**options):
         password=os.getenv('DEMO_PASSWORD')

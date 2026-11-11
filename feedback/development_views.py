@@ -43,6 +43,8 @@ def initiative(request,pk):
             theme=accessible_theme(request.user,pk)
             if form.cleaned_data['owner'].pk not in owners_for(request.user,theme).values_list('pk',flat=True): return HttpResponseForbidden('Доступ ответственного изменился.')
             current=Initiative.objects.filter(theme=theme).first()
+            if current and (form.cleaned_data['status']=='done' and current.steps.filter(active=True,done=False).exists() or current.steps.filter(active=True,due_date__gt=form.cleaned_data['due_date']).exists()):
+                messages.error(request,'План шагов изменился. Проверьте незавершённые шаги и их сроки.');return redirect('initiative',pk=pk)
             before={field:str(getattr(current,field)) for field in form.Meta.fields} if current else {}
             saved=form.save(commit=False)
             if current: saved.pk=current.pk
@@ -55,7 +57,8 @@ def initiative(request,pk):
             messages.success(request,'Паспорт системной проблемы сохранён. Статусы связанных обращений не изменены.')
             return redirect('initiative',pk=pk)
     if request.method=='POST' and item: item.refresh_from_db()
-    return render(request,'feedback/initiative.html',{'theme':theme,'initiative':item,'form':form})
+    steps=list(item.steps.select_related('owner','completed_by').filter(active=True)) if item else []
+    return render(request,'feedback/initiative.html',{'theme':theme,'initiative':item,'form':form,'steps':steps,'done_count':sum(step.done for step in steps),'inactive_steps':item.steps.filter(active=False) if item else []})
 
 
 @login_required
