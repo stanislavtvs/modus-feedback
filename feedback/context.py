@@ -5,7 +5,7 @@ from .access import role
 
 def navigation(request):
     route = request.resolver_match.url_name if request.resolver_match else ''
-    titles = {'dashboard': 'Обзор', 'tickets': 'Обращения', 'create': 'Новое обращение',
+    titles = {'radar':'Радар проблем','followups':'Контроль обращений','improvements':'Витрина улучшений','publication':'История улучшения','dashboard': 'Обзор', 'tickets': 'Обращения', 'create': 'Новое обращение',
               'detail': 'Карточка обращения', 'analytics': 'Аналитика',
               'notifications': 'Уведомления', 'login': 'Вход', 'settings': 'Настройки и маршрутизация', 'category_edit': 'Настройки и маршрутизация'}
     nav = 'settings' if route == 'category_edit' else route

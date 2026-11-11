@@ -35,6 +35,19 @@ services:
       retries: 10
       start_period: 40s
     restart: unless-stopped
+  followups:
+    build: .
+    command: ["python", "manage.py", "run_followups", "--interval", "60"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB:-modus}
+      POSTGRES_USER: ${POSTGRES_USER:-modus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
 volumes:
   postgres_data:
   uploads:

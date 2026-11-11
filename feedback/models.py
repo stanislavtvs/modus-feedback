@@ -54,6 +54,8 @@ class Ticket(models.Model):
     updated_at=models.DateTimeField(auto_now=True)
     first_response_at=models.DateTimeField(null=True,blank=True)
     closed_at=models.DateTimeField(null=True,blank=True)
+    resolution_revision=models.PositiveIntegerField(default=0)
+    result_offered_at=models.DateTimeField(null=True,blank=True)
     source_id=models.CharField(max_length=20,blank=True,unique=True,null=True)
     class Meta:
         ordering=['-created_at']
@@ -92,3 +94,52 @@ class AIRequestLock(models.Model):
     user=models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
     token=models.CharField(max_length=36,blank=True)
     reserved_until=models.DateTimeField(null=True,blank=True)
+
+class OutcomeReview(models.Model):
+    ticket=models.ForeignKey(Ticket,on_delete=models.CASCADE,related_name='outcome_reviews')
+    revision=models.PositiveIntegerField()
+    author=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    verdict=models.CharField(max_length=12,choices=[('helped','Помогло'),('not_helped','Проблема осталась')])
+    comment=models.TextField(blank=True)
+    created_at=models.DateTimeField(default=timezone.now)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['ticket','revision'],name='one_outcome_per_revision')]
+
+class ImprovementPost(models.Model):
+    ticket=models.OneToOneField(Ticket,on_delete=models.CASCADE,related_name='publication')
+    source_revision=models.PositiveIntegerField()
+    title=models.CharField('Заголовок',max_length=180)
+    before=models.TextField('Что было')
+    after=models.TextField('Что изменилось')
+    effect=models.TextField('Подтверждённый эффект')
+    audience=models.CharField('Кому показать',max_length=12,choices=[('department','Подразделению'),('company','Всей компании')],default='department')
+    status=models.CharField(max_length=12,default='draft',choices=[('draft','Черновик'),('published','Опубликовано'),('withdrawn','Снято с публикации')])
+    editor=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    published_at=models.DateTimeField(null=True,blank=True)
+    updated_at=models.DateTimeField(auto_now=True)
+
+class ProblemTheme(models.Model):
+    title=models.CharField(max_length=140)
+    summary=models.TextField()
+    tickets=models.ManyToManyField(Ticket,related_name='problem_themes')
+    fingerprint=models.CharField(max_length=64,unique=True)
+    status=models.CharField(max_length=12,default='proposed',choices=[('proposed','Предложено ИИ'),('confirmed','Подтверждено'),('dismissed','Отклонено')])
+    created_by=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT,related_name='+')
+    confirmed_by=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.PROTECT,related_name='+')
+    created_at=models.DateTimeField(default=timezone.now)
+
+class FollowUpPolicy(models.Model):
+    enabled=models.BooleanField('Включить автоматические напоминания',default=True)
+    first_response_hours=models.PositiveSmallIntegerField('Первый ответ, часов',default=24)
+    inactivity_hours=models.PositiveSmallIntegerField('Без обновлений, часов',default=72)
+    escalation_hours=models.PositiveSmallIntegerField('Эскалация после напоминания, часов',default=24)
+
+class FollowUpAlert(models.Model):
+    ticket=models.ForeignKey(Ticket,on_delete=models.CASCADE,related_name='followup_alerts')
+    kind=models.CharField(max_length=20,choices=[('no_response','Нет первого ответа'),('stale','Нет обновлений'),('overdue','Срок истёк')])
+    episode=models.CharField(max_length=64)
+    reminded_at=models.DateTimeField(default=timezone.now)
+    escalated_at=models.DateTimeField(null=True,blank=True)
+    resolved_at=models.DateTimeField(null=True,blank=True)
+    class Meta:
+        constraints=[models.UniqueConstraint(fields=['ticket'],condition=Q(resolved_at__isnull=True),name='one_active_followup')]

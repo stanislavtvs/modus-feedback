@@ -74,6 +74,8 @@ def detail(request,pk):
             if form.is_valid():
                 with transaction.atomic():
                     locked=Ticket.objects.select_for_update().get(pk=pk)
+                    if not can_process(request.user,locked): return HttpResponseForbidden('Доступ к обработке изменился.')
+                    old_status=locked.status;old_resolution=locked.resolution
                     changes=[]
                     for field in ['status','assignee','priority','due_at','resolution']:
                         old=getattr(locked,field);new=form.cleaned_data[field]
@@ -90,6 +92,11 @@ def detail(request,pk):
                     if changes:
                         if locked.author_id!=request.user.pk and not locked.first_response_at: locked.first_response_at=timezone.now()
                         locked.closed_at=(locked.closed_at or timezone.now()) if locked.status in CLOSED else None
+                        if locked.status in ['implemented','closed'] and (old_status!=locked.status or old_resolution!=locked.resolution):
+                            locked.resolution_revision+=1;locked.result_offered_at=timezone.now()
+                        if old_status!=locked.status or old_resolution!=locked.resolution:
+                            from .feature_views import withdraw_publication
+                            withdraw_publication(locked)
                         locked.save()
                         Event.objects.create(ticket=locked,actor=request.user,text='; '.join(changes))
                         notify(locked,request.user,'Обновлено обращение '+locked.reference)
@@ -106,7 +113,15 @@ def detail(request,pk):
                     notify(locked,request.user,'Новый комментарий к '+locked.reference)
                 messages.success(request,'Комментарий добавлен.')
                 return redirect('detail',pk=pk)
-    return render(request,'feedback/detail.html',{'ticket':ticket,'process_form':form,'comment_form':comment_form,'similar':similar(ticket,visible(request.user))})
+    return render_detail(request,ticket,form,comment_form)
+
+def render_detail(request,ticket,process_form=None,comment_form=None,outcome_form=None):
+    from .feature_forms import OutcomeForm
+    review=ticket.outcome_reviews.filter(revision=ticket.resolution_revision).first()
+    if outcome_form is None and ticket.author_id==request.user.pk and ticket.status in ['implemented','closed'] and ticket.resolution_revision and not review:
+        outcome_form=OutcomeForm(initial={'revision':ticket.resolution_revision})
+    return render(request,'feedback/detail.html',{'outcome_form':outcome_form,'outcome_review':review,'ticket':ticket,'process_form':process_form,'comment_form':comment_form or CommentForm(),'similar':similar(ticket,visible(request.user))})
+
 @login_required
 def download(request,pk):
     attachment=get_object_or_404(Attachment,pk=pk,ticket__in=visible(request.user))

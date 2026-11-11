@@ -39,6 +39,9 @@ def schema_for(mode,categories):
                 'kind':{'type':'string','enum':['problem','idea','praise']},
                 'priority':{'type':'string','enum':['low','medium','high']},
                 'reason':string(700),'questions':{'type':'array','items':string(300),'maxItems':4}}
+    elif mode=='radar':
+        group={'type':'object','properties':{'title':string(140),'summary':string(900),'ticket_ids':{'type':'array','minItems':2,'maxItems':8,'uniqueItems':True,'items':{'type':'integer','enum':[c['id'] for c in categories]}}},'required':['title','summary','ticket_ids'],'additionalProperties':False}
+        fields={'groups':{'type':'array','maxItems':5,'items':group}}
     else:
         fields={'summary':string(1200),'plain_language':string(1800),
                 'questions':{'type':'array','items':string(300),'maxItems':4},
@@ -47,20 +50,24 @@ def schema_for(mode,categories):
     return {'type':'object','properties':fields,'required':list(fields),'additionalProperties':False}
 
 def validate(data,schema):
-    if not isinstance(data,dict) or set(data)!=set(schema['properties']):
-        raise AIInvalidResponse()
-    for key,rule in schema['properties'].items():
-        value=data[key]
-        if rule['type']=='string':
-            if not isinstance(value,str) or len(value)>rule.get('maxLength',100): raise AIInvalidResponse()
-            data[key]=value.strip()
-        elif rule['type']=='array':
-            if not isinstance(value,list) or len(value)>rule['maxItems']: raise AIInvalidResponse()
-            if any(not isinstance(v,str) or len(v)>rule['items']['maxLength'] for v in value): raise AIInvalidResponse()
-            data[key]=[v.strip() for v in value if v.strip()]
-        elif value is not None and (type(value) is not int): raise AIInvalidResponse()
-        if 'enum' in rule and value not in rule['enum']: raise AIInvalidResponse()
-    return data
+    kind=schema['type']
+    if kind=='object':
+        if not isinstance(data,dict) or set(data)!=set(schema['properties']): raise AIInvalidResponse()
+        return {key:validate(data[key],rule) for key,rule in schema['properties'].items()}
+    if kind=='array':
+        if not isinstance(data,list) or not schema.get('minItems',0)<=len(data)<=schema['maxItems']: raise AIInvalidResponse()
+        result=[validate(value,schema['items']) for value in data]
+        if schema.get('uniqueItems') and len(set(result))!=len(result): raise AIInvalidResponse()
+        return result
+    if kind=='string':
+        if not isinstance(data,str) or len(data)>schema.get('maxLength',100): raise AIInvalidResponse()
+        result=data.strip()
+    else:
+        if data is not None and type(data) is not int: raise AIInvalidResponse()
+        if data is None and kind=='integer': raise AIInvalidResponse()
+        result=data
+    if 'enum' in schema and data not in schema['enum']: raise AIInvalidResponse()
+    return result
 
 def generate(user,mode,source,categories):
     if not settings.AI_ENABLED: raise AIUnavailable()
@@ -83,10 +90,12 @@ def generate(user,mode,source,categories):
             'следующие шаги для проверки ситуации. Составь вежливый черновик ответа автору, '
             'не обещая неподтверждённых действий. Если данных достаточно, вопросы могут быть пустыми.'
         )
+        if mode=='radar':
+            task='Найди повторяющиеся рабочие проблемы в обращениях. Объединяй только совпадающую причину или процесс, не просто категорию. Каждая группа содержит 2–8 разных ticket_ids из входных данных. Не повторяй обращение в разных группах. Дай нейтральный заголовок и объясни связь без имён. Если надёжных повторов нет, верни пустой groups. Это предложения для проверки руководителем.'
         payload={'model':settings.OLLAMA_MODEL,'stream':False,'think':False,'format':schema,
                  'messages':[{'role':'system','content':POLICY+' Задача: '+task},
                              {'role':'user','content':json.dumps({'source':source,'categories':categories},ensure_ascii=False)}],
-                 'options':{'temperature':0.1,'num_predict':1600,'num_ctx':8192},'keep_alive':'5m'}
+                 'options':{'temperature':0.1,'num_predict':2400 if mode=='radar' else 1600,'num_ctx':16384 if mode=='radar' else 8192},'keep_alive':'5m'}
         request=Request(settings.OLLAMA_URL+'/api/chat',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
         # Direct private-network connection, no inherited outbound proxy or redirects.
         opener=build_opener(ProxyHandler({}),NoRedirect())

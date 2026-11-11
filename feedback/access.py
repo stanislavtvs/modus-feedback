@@ -13,3 +13,10 @@ def visible(user):
     return qs.filter(condition).distinct()
 def can_process(user,ticket):
     return role(user)=='admin' or (role(user)=='manager' and (ticket.department_id==user.profile.department_id or ticket.assignee_id==user.pk))
+
+
+def processable(user):
+    qs=visible(user)
+    if role(user)=='admin': return qs
+    if role(user)=='manager': return qs.filter(Q(department=user.profile.department)|Q(assignee=user))
+    return qs.none()
