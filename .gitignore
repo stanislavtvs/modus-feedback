@@ -10,3 +10,6 @@ staticfiles/
 .DS_Store
 *.sql
 *.dump
+
+# Never include deployment account secrets.
+.deployment-access*

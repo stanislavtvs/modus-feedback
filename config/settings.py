@@ -50,5 +50,5 @@ OLLAMA_TIMEOUT=min(max(int(os.getenv('OLLAMA_TIMEOUT','75')),5),90)
 
 # Enabled only in the isolated synthetic-data installation.
 DEMO_MODE=os.getenv('DEMO_MODE','0')=='1'
-SESSION_COOKIE_NAME='modus_demo_session' if DEMO_MODE else 'sessionid'
-CSRF_COOKIE_NAME='modus_demo_csrf' if DEMO_MODE else 'csrftoken'
+SESSION_COOKIE_NAME=os.getenv('SESSION_COOKIE_NAME','modus_demo_session' if DEMO_MODE else 'sessionid')
+CSRF_COOKIE_NAME=os.getenv('CSRF_COOKIE_NAME','modus_demo_csrf' if DEMO_MODE else 'csrftoken')

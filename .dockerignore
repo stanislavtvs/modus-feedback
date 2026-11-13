@@ -5,3 +5,6 @@ __pycache__
 private_uploads
 staticfiles
 .venv
+
+# Never include deployment account secrets.
+.deployment-access*

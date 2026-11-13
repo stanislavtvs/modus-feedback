@@ -1,6 +1,6 @@
 # Серверная установка
 
-Адрес: https://95.57.206.92:8443. Каталог `/home/handyapp/modus-feedback`, Compose-проект `modus-server`. База и вложения находятся в отдельных именованных томах. ИИ отключён по решению владельца: AI_ENABLED=0.
+Адрес: https://95.57.206.92:8443. Каталог `/home/handyapp/modus-feedback`, Compose-проект `modus-server`. База и вложения находятся в отдельных именованных томах. ИИ отключён по решению владельца: AI_ENABLED=0. Для совместной работы с TOU Events используются отдельные имена cookies: SESSION_COOKIE_NAME=modus_session и CSRF_COOKIE_NAME=modus_csrf.
 
 ```sh
 cd /home/handyapp/modus-feedback
