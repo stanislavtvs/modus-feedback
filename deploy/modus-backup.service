@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup Modus PostgreSQL and private uploads
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/handyapp/modus-feedback/deploy/backup.sh
+UMask=0077

@@ -1,0 +1,13 @@
+services:
+  db:
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  web:
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  followups:
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
